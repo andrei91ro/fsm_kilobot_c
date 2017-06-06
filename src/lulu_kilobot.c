@@ -143,7 +143,8 @@ void process_message() {
 
     //if we reach this step then i is a valid slot
     mydata->neighbors[i].uid = id;
-    mydata->neighbors[i].symbolic_id = id - smallest_robot_uid;
+    //mydata->neighbors[i].symbolic_id = id - smallest_robot_uid;
+    mydata->neighbors[i].symbolic_id = id;
     //if there is no previous recording of the distance to this neighbor
     if (mydata->neighbors[i].distance == mydata->neighbors[i].distance_prev &&
            mydata->neighbors[i].distance == 0)
@@ -176,30 +177,6 @@ void procInputModule() {
     else
         //replaceObjInMultisetObj(&mydata->pcol.agents[AGENT_MSG_DISTANCE].obj, OBJECT_ID_D_ALL, OBJECT_ID_S_ALL);
         mydata->current_event = EVENT_NEIGHBOR_CLOSE;
-}
-
-void procOutputModule() {
-    #ifdef USING_AGENT_MOTION
-        for (uint8_t obj_id = 0; obj_id < mydata->pcol.agents[AGENT_MOTION].obj.size; obj_id++)
-            switch (mydata->pcol.agents[AGENT_MOTION].obj.items[obj_id]) {
-                case OBJECT_ID_M_0: set_motion(MOTION_STOP); break;
-                case OBJECT_ID_M_S: set_motion(MOTION_STRAIGHT); break;
-                case OBJECT_ID_M_L: set_motion(MOTION_LEFT); break;
-                case OBJECT_ID_M_R: set_motion(MOTION_RIGHT);break;
-            }
-    #endif
-
-    #ifdef USING_AGENT_LED_RGB
-        //for (uint8_t obj_id = 0; obj_id < mydata->pcol.agents[AGENT_LED_RGB].obj.size; obj_id++)
-            //switch (mydata->pcol.agents[AGENT_LED_RGB].obj.items[obj_id]) {
-                //case OBJECT_ID_C_0: mydata->current_led_color = COLOR_OFF; break;
-                //case OBJECT_ID_C_R: mydata->current_led_color = COLOR_RED; break;
-                //case OBJECT_ID_C_G: mydata->current_led_color = COLOR_GREEN; break;
-                //case OBJECT_ID_C_B: mydata->current_led_color = COLOR_BLUE; break;
-                //case OBJECT_ID_C_W: mydata->current_led_color = COLOR_WHITE; break;
-            //}
-        //set_color(colorValues[mydata->current_led_color]);
-    #endif
 }
 
 message_t* message_tx() {
@@ -259,9 +236,6 @@ void loop() {
 #endif
     //transform sensor input into symbolic objects
     procInputModule();
-    //mydata->sim_result = pcolony_runSimulationStep(&mydata->pcol);
-    //transform symbolic objects into effector commands
-    //procOutputModule();
 
     handlers[mydata->current_event]();
 #ifdef KILOBOT
@@ -282,12 +256,6 @@ void setup() {
     //initialize message for transmission
     setup_message();
 
-    //initialize Pcolony
-    lulu_init(&mydata->pcol);
-
-    #ifdef NEEDING_WILDCARD_EXPANSION
-        expand_pcolony(&mydata->pcol, kilo_uid);
-    #endif
 
     //init neighbors
     for (uint8_t i = 0; i < MAX_NEIGHBORS; i++)

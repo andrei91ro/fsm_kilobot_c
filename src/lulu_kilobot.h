@@ -115,8 +115,6 @@ typedef struct _received_message {
 } Received_message_t;
 
 typedef struct {
-    Pcolony_t pcol;
-
     //uint8_t light,
             //light_prev;
     motion_t current_motion_state;
