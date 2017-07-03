@@ -36,25 +36,27 @@
 #endif
 
 #define FORGET_NEIGHBOR_INTERVAL 32 * 2 //forget neighbors if the last msg received was 32 * X seconds ago (1 second = 32 kiloticks)
-#define SLEEP_MS_BETWEEN_SIMSTEPS 50 //the number of miliseconds to wait before executing the next Lulu simulation step
+#define SLEEP_MS_BETWEEN_SIMSTEPS 30 //the number of miliseconds to wait before executing the next Lulu simulation step
 
 /**
  * @brief Define the states used for a robot
  */
 typedef enum {
-    STATE_STOP_LED_OFF,
-    STATE_LEFT_RED,
-    STATE_RIGHT_BLUE,
-    STATE_STRAIGHT_GREEN,
-    STATE_STOP_WHITE
+    STATE_INIT_LED_OFF_STOP,
+    STATE_RED_STOP,
+    STATE_GREEN_STOP,
+    STATE_BLUE_STOP,
+    STATE_WHITE_MOVE_RAND,
 } state_t;
 
 /**
  * @brief Define the events that can be perceived
  */
 typedef enum {
-    EVENT_NEIGHBOR_CLOSE,
-    EVENT_ALL_NEIGHBORS_DISTANT
+    EVENT_RECEIVE_RED,
+    EVENT_RECEIVE_GREEN,
+    EVENT_RECEIVE_BLUE,
+    EVENT_NONE,
 } event_t;
 
 /**
@@ -62,11 +64,14 @@ typedef enum {
  */
 void handle_default();
 
-void handle_neighbor_close();
+void handle_receive_red();
+void handle_receive_green();
+void handle_receive_blue();
 
-void handle_all_neighbors_distant();
-
-void (*handlers[2])(void) = {handle_neighbor_close, handle_all_neighbors_distant};
+void (*handlers[4])(void) = {[EVENT_NONE] = handle_default,
+    [EVENT_RECEIVE_RED] = handle_receive_red,
+    [EVENT_RECEIVE_GREEN] = handle_receive_green,
+    [EVENT_RECEIVE_BLUE] = handle_receive_blue};
 
 
 /**
@@ -93,6 +98,7 @@ uint8_t colorValues[] = {RGB(0, 0, 0), RGB(3, 0, 0), RGB(0, 3, 0), RGB(0, 0, 3),
 enum {
     INDEX_MSG_OWNER_UID_LOW,
     INDEX_MSG_OWNER_UID_HIGH,
+    INDEX_MSG_DATA,
 };
 
 /**
@@ -134,6 +140,7 @@ typedef struct {
 
     //the currently perceived event
     event_t current_event;
+    state_t current_state;
 
 } USERDATA;
 

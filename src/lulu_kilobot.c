@@ -53,41 +53,93 @@ void handle_default() {
     printd("called default handler");
 }
 
-void handle_neighbor_close() {
-    uint8_t rand_value, options_count = 4;
-    printd("handle neighbor close");
-    //set_color(RGB(3, 0, 0));
-    //mydata->current_led_color = COLOR_RED;
+void go_to_white_moveRand() {
+    uint8_t rand_value;
+    printd("go_to_white_moveRand()");
+
+    mydata->current_state = STATE_WHITE_MOVE_RAND;
 
 #ifndef KILOBOT
     //use rand() from stdlib.h
     //rand_value in [0; options_count-1] interval
-    rand_value = rand() % options_count;
+    rand_value = rand() % 4;
 #else
     //use rand_soft from kilolib.h
     //rand_value in [0; options_count-1] interval
-    rand_value = rand_soft() % options_count;
+    rand_value = rand_soft() % 4;
 #endif
 
     switch (rand_value) {
         case 0: case 1: {
-            mydata->current_led_color = COLOR_GREEN;
             set_motion(MOTION_STRAIGHT);
             break;
         }
         case 2: {
-            mydata->current_led_color = COLOR_RED;
             set_motion(MOTION_LEFT);
             break;
         }
         case 3: {
-            mydata->current_led_color = COLOR_BLUE;
             set_motion(MOTION_RIGHT);
             break;
         }
     }
 
+    mydata->current_led_color = COLOR_WHITE;
     set_color(colorValues[mydata->current_led_color]);
+}
+
+void handle_receive_red() {
+    printd("handle_receive_red()");
+
+    if (mydata->current_state == STATE_RED_STOP
+            || mydata->current_state == STATE_WHITE_MOVE_RAND
+            || mydata->current_state == STATE_INIT_LED_OFF_STOP) {
+
+        mydata->current_state = STATE_RED_STOP;
+        mydata->current_led_color = COLOR_RED;
+        set_motion(MOTION_STOP);
+        set_color(colorValues[mydata->current_led_color]);
+        //publish red
+        mydata->msg_tx.data[INDEX_MSG_DATA] = 0;
+        mydata->msg_tx.crc = message_crc(&mydata->msg_tx);
+    } else
+        go_to_white_moveRand();
+}
+
+void handle_receive_green() {
+    printd("handle_receive_green()");
+
+    if (mydata->current_state == STATE_GREEN_STOP
+            || mydata->current_state == STATE_WHITE_MOVE_RAND
+            || mydata->current_state == STATE_INIT_LED_OFF_STOP) {
+
+        mydata->current_state = STATE_GREEN_STOP;
+        mydata->current_led_color = COLOR_GREEN;
+        set_motion(MOTION_STOP);
+        set_color(colorValues[mydata->current_led_color]);
+        //publish red
+        mydata->msg_tx.data[INDEX_MSG_DATA] = 1;
+        mydata->msg_tx.crc = message_crc(&mydata->msg_tx);
+    } else
+        go_to_white_moveRand();
+}
+
+void handle_receive_blue() {
+    printd("handle_receive_blue()");
+
+    if (mydata->current_state == STATE_BLUE_STOP
+            || mydata->current_state == STATE_WHITE_MOVE_RAND
+            || mydata->current_state == STATE_INIT_LED_OFF_STOP) {
+
+        mydata->current_state = STATE_BLUE_STOP;
+        mydata->current_led_color = COLOR_BLUE;
+        set_motion(MOTION_STOP);
+        set_color(colorValues[mydata->current_led_color]);
+        //publish blue
+        mydata->msg_tx.data[INDEX_MSG_DATA] = 2;
+        mydata->msg_tx.crc = message_crc(&mydata->msg_tx);
+    } else
+        go_to_white_moveRand();
 }
 
 void handle_all_neighbors_distant() {
@@ -157,6 +209,10 @@ void process_message() {
         mydata->neighbors[i].distance = distance;
     }
 
+    //if we receive a color signal
+    if (data[INDEX_MSG_DATA] >= 0 && data[INDEX_MSG_DATA] < 3)
+        mydata->current_event = data[INDEX_MSG_DATA];
+
     //set the moment in the future when the robot will forget about this neighbor
     mydata->neighbors[i].timexp_forget = kilo_ticks + FORGET_NEIGHBOR_INTERVAL;
 }
@@ -171,12 +227,12 @@ void procInputModule() {
             break;
         }
     //if (dist_big || mydata->nr_neighbors == 0)
-    if (dist_big)
-        //replaceObjInMultisetObj(&mydata->pcol.agents[AGENT_MSG_DISTANCE].obj, OBJECT_ID_D_ALL, OBJECT_ID_B_ALL);
-        mydata->current_event = EVENT_ALL_NEIGHBORS_DISTANT;
-    else
-        //replaceObjInMultisetObj(&mydata->pcol.agents[AGENT_MSG_DISTANCE].obj, OBJECT_ID_D_ALL, OBJECT_ID_S_ALL);
-        mydata->current_event = EVENT_NEIGHBOR_CLOSE;
+    //if (dist_big)
+        ////replaceObjInMultisetObj(&mydata->pcol.agents[AGENT_MSG_DISTANCE].obj, OBJECT_ID_D_ALL, OBJECT_ID_B_ALL);
+        //mydata->current_event = EVENT_ALL_NEIGHBORS_DISTANT;
+    //else
+        ////replaceObjInMultisetObj(&mydata->pcol.agents[AGENT_MSG_DISTANCE].obj, OBJECT_ID_D_ALL, OBJECT_ID_S_ALL);
+        //mydata->current_event = EVENT_NEIGHBOR_CLOSE;
 }
 
 message_t* message_tx() {
@@ -196,13 +252,29 @@ void setup_message() {
     mydata->msg_tx.type = NORMAL;
     mydata->msg_tx.data[INDEX_MSG_OWNER_UID_LOW] = kilo_uid & 0xFF; //low byte
     mydata->msg_tx.data[INDEX_MSG_OWNER_UID_HIGH] = kilo_uid >> 8; //high byte
+
+#ifdef KILOBOT
+    if (kilo_uid < 33)
+        mydata->msg_tx.data[INDEX_MSG_DATA] = kilo_uid - 30;
+#else
+    if (kilo_uid < 3)
+        mydata->msg_tx.data[INDEX_MSG_DATA] = kilo_uid;
+#endif
+    else
+        mydata->msg_tx.data[INDEX_MSG_DATA] = 255;
     mydata->msg_tx.crc = message_crc(&mydata->msg_tx);
 }
 
 void loop() {
-#ifdef PCOL_SIM
-    printi("\nLOOP for robot %d\n-------------------------\n", kilo_uid);
+#ifdef KILOBOT
+    if (kilo_uid < 33) {
+#else
+    if (kilo_uid < 3) {
 #endif
+        printi("\n SKIPPING LOOP for robot %d\n-------------------------\n", kilo_uid);
+        return;
+    }
+    printi("\nLOOP for robot %d\n-------------------------\n", kilo_uid);
     //if the previous step was the last one
     //if (mydata->sim_result == SIM_STEP_RESULT_NO_MORE_EXECUTABLES) {
         ////mark the end of the simulation and exit
@@ -246,16 +318,28 @@ void loop() {
 
 void setup() {
     //initialize the mydata structure
-    //mydata->current_led_color = COLOR_OFF;
-    //mydata->current_motion_state = MOTION_STOP;
-    //mydata->sim_result = SIM_STEP_RESULT_FINISHED;
-    //mydata->light = mydata->light_prev = 0;
+    mydata->current_led_color = COLOR_OFF;
+    mydata->current_motion_state = MOTION_STOP;
     mydata->nr_neighbors = 0;
     mydata->neighbor_index = 0;
-    mydata->current_event = EVENT_ALL_NEIGHBORS_DISTANT;
+    mydata->current_event = EVENT_NONE;
+
+#ifdef KILOBOT
+    if (kilo_uid < 33)
+        mydata->msg_tx.data[INDEX_MSG_DATA] = kilo_uid - 30;
+#else
+    if (kilo_uid < 3)
+        mydata->msg_tx.data[INDEX_MSG_DATA] = kilo_uid;
+#endif
+    else
+        mydata->msg_tx.data[INDEX_MSG_DATA] = 255;
+
     //initialize message for transmission
     setup_message();
-
+    if (mydata->msg_tx.data[INDEX_MSG_DATA] != 255) {
+        mydata->current_led_color += mydata->msg_tx.data[INDEX_MSG_DATA] + 1;
+        set_color(colorValues[mydata->current_led_color]);
+    }
 
     //init neighbors
     for (uint8_t i = 0; i < MAX_NEIGHBORS; i++)
