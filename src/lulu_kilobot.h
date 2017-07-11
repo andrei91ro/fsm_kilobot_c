@@ -36,7 +36,7 @@
 #endif
 
 #define FORGET_NEIGHBOR_INTERVAL 32 * 2 //forget neighbors if the last msg received was 32 * X seconds ago (1 second = 32 kiloticks)
-#define SLEEP_MS_BETWEEN_SIMSTEPS 30 //the number of miliseconds to wait before executing the next Lulu simulation step
+#define SLEEP_MS_BETWEEN_SIMSTEPS 10 //the number of miliseconds to wait before executing the next Lulu simulation step
 
 /**
  * @brief Define the states used for a robot
