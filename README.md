@@ -2,9 +2,9 @@
 
 FSM controller for the Kilobot robot that has [Lulu_kilobot_c](https://github.com/andrei91ro/lulu_kilobot_c) as base.
 
-##Note
+## Note
 This is a standalone application that has the codebase inspired from [Lulu_kilobot_c](https://github.com/andrei91ro/lulu_kilobot_c).
-The latter is a dependency of this application
+The latter is NOT a dependency of this application
 
 # Authors
 Andrei George Florea, Cătălin Buiu,
